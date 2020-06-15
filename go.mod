@@ -10,6 +10,7 @@ require (
 	github.com/pion/webrtc/v2 v2.2.14
 	github.com/povilasv/prommod v0.0.12
 	github.com/prometheus/client_golang v1.6.0
+	github.com/rs/xid v1.2.1 // indirect
 )
 
 replace github.com/hiteshjoshi/webrtc/gst => ./gst

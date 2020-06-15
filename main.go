@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/hiteshjoshi/webrtc/gst"
 	"github.com/pion/webrtc/v2"
 	"github.com/povilasv/prommod"
 	"github.com/prometheus/client_golang/prometheus"
@@ -31,6 +32,8 @@ func init() {
 
 	// Create the API object with the MediaEngine
 	api = webrtc.NewAPI(webrtc.WithMediaEngine(m))
+
+	userPipelines = make(map[string]*gst.Element) //to store all user pipelines
 
 }
 
