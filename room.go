@@ -59,27 +59,30 @@ const (
 
 func initGst() {
 	audioTrack, _ = gst.PipelineNew("myapp")
+	//sink, _ := gst.ElementFactoryMake("appsink", "asinks")
+	//sink.SetObject("name", "sink")
 
-	//appsink, _ := gst.ElementFactoryMake("filesink", "appsink")
-	//appsink.SetObject("location", "file.ogg")
-
-	sink, _ := gst.ElementFactoryMake("appsink", "asinks")
-	sink.SetObject("name", "sink")
 	audioMixer, _ := gst.ElementFactoryMake("audiomixer", "audiomixer")
 	audioMixer.SetObject("name", "mix")
+
 	mixerConvert, _ := gst.ElementFactoryMake("audioconvert", "mixerconvert")
 	//audioresample, _ := gst.ElementFactoryMake("audioresample", "audioresample")
+
 	opusenc, _ := gst.ElementFactoryMake("opusenc", "opusenc")
+
 	oggmux, _ := gst.ElementFactoryMake("oggmux", "oggmux")
 
-	audioTrack.AddMany(audioMixer, sink, mixerConvert, oggmux, opusenc)
+	appsink, _ := gst.ElementFactoryMake("filesink", "appsink")
+	appsink.SetObject("location", "file.ogg")
+
+	audioTrack.AddMany(audioMixer, appsink, mixerConvert, oggmux, opusenc)
 
 	log.Println(audioMixer.Link(mixerConvert))
 	log.Println(mixerConvert.Link(opusenc))
 
 	//log.Printf("opusenc: %t", audioresample.Link(opusenc))
-	log.Println(opusenc.Link(sink))
-	//log.Println(oggmux.Link(appsink))
+	log.Println(opusenc.Link(oggmux))
+	log.Println(oggmux.Link(appsink))
 
 	log.Println(audioTrack.Name())
 
@@ -273,15 +276,28 @@ func room(w http.ResponseWriter, r *http.Request) {
 
 	nlp, _ := gst.PipelineNew("user")
 
-	testsrc, _ := gst.ElementFactoryMake("audiotestsrc", "testsrcaudio")
+	testsrc, _ := gst.ElementFactoryMake("filesrc", "testsrcaudio")
+	testsrc.SetObject("location", "src.mp3")
+	testdecodebin, _ := gst.ElementFactoryMake("decodebin", "testdecodebin")
+	testaudioconvert, _ := gst.ElementFactoryMake("audioconvert", "testaudioconvert")
+
+	testaudioresample, _ := gst.ElementFactoryMake("audioresample", "testaudioresample")
 	testopus, _ := gst.ElementFactoryMake("opusenc", "opusenc")
 
 	testsink, _ := gst.ElementFactoryMake("appsink", "sinktest")
 
-	nlp.AddMany(testsrc, testsink, testopus)
+	nlp.AddMany(testsrc, testsink, testopus, testdecodebin, testaudioconvert, testaudioresample)
 
-	fmt.Println(testsrc.Link(testopus))
-	fmt.Println(testopus.Link(testsink))
+	log.Println(testsrc.Link(testdecodebin))
+	//log.Println(testdecodebin.Link(testaudioconvert))
+
+	log.Println(testaudioconvert.Link(testaudioresample))
+	log.Println(testaudioresample.Link(testopus))
+	log.Println(testopus.Link(testsink))
+
+	testdecodebin.SetPadAddedCallback(func(element *gst.Element, pad *gst.Pad) {
+		log.Println(pad.Link(testaudioconvert.GetStaticPad("sink")))
+	})
 
 	nlp.SetState(gst.StatePlaying)
 	//audioSink := npl.GetByName("sink")
