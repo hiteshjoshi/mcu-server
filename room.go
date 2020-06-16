@@ -62,28 +62,28 @@ const (
 func initGst() {
 	audioTrack, _ = gst.PipelineNew("myapp")
 
-	appsink, _ := gst.ElementFactoryMake("filesink", "appsink")
-	appsink.SetObject("location", "file.ogg")
+	appsink, _ := gst.ElementFactoryMake("appsink", "appsink")
+	appsink.SetObject("name", "sink")
 
 	audioMixer, _ := gst.ElementFactoryMake("audiomixer", "audiomixer")
 	audioMixer.SetObject("name", "mix")
 	mixerConvert, _ := gst.ElementFactoryMake("audioconvert", "mixerconvert")
 	//audioresample, _ := gst.ElementFactoryMake("audioresample", "audioresample")
 	opusenc, _ := gst.ElementFactoryMake("opusenc", "opusenc")
-	oggmux, _ := gst.ElementFactoryMake("oggmux", "oggmux")
+	//oggmux, _ := gst.ElementFactoryMake("oggmux", "oggmux")
 
 	//tee, _ := gst.ElementFactoryMake("tee", "tee")
 	//tee.SetObject("name", "tee")
 
-	audioTrack.AddMany(audioMixer, appsink, mixerConvert, opusenc, oggmux)
+	audioTrack.AddMany(audioMixer, appsink, mixerConvert, opusenc)
 
 	log.Println(audioMixer.Link(mixerConvert))
 	log.Println(mixerConvert.Link(opusenc))
 
 	//log.Println(audioresample.Link(opusenc))
 
-	log.Println(opusenc.Link(oggmux))
-	log.Println(oggmux.Link(appsink))
+	log.Println(opusenc.Link(appsink))
+	//log.Println(oggmux.Link(appsink))
 
 	//tee.SetPadAddedCallback(func(element *gst.Element, pad *gst.Pad) {
 	//	log.Println(pad.Link(audioMixer.GetStaticPad("sink")))
@@ -117,7 +117,6 @@ func room(w http.ResponseWriter, r *http.Request) {
 
 	atomic.AddInt32(&pubCount, 1)
 	userID := fmt.Sprintf("%d", atomic.LoadInt32(&pubCount))
-	var userP *gst.Pipeline
 
 	//atomic.AddInt32(&pubCount, 1)
 
@@ -181,70 +180,70 @@ func room(w http.ResponseWriter, r *http.Request) {
 
 			// Create a local audio track, all our SFU clients will be fed via this track
 
-			appsrc, _ := gst.ElementFactoryMake("appsrc", "appsrc"+fmt.Sprintf("%d", atomic.LoadInt32(&pubCount)))
-			appsrc.SetObject("name", "src"+fmt.Sprintf("%d", atomic.LoadInt32(&pubCount)))
+			appsrc, _ := gst.ElementFactoryMake("appsrc", "appsrc"+userID)
+			appsrc.SetObject("name", "src"+userID)
 			appsrc.SetObject("format", gst.NewFormat("time"))
 			appsrc.SetObject("is-live", true)
 			appsrc.SetObject("do-timestamp", true)
 
-			capsfilter, _ := gst.ElementFactoryMake("capsfilter", "capsfilter"+fmt.Sprintf("%d", atomic.LoadInt32(&pubCount)))
+			capsfilter, _ := gst.ElementFactoryMake("capsfilter", "capsfilter"+userID)
 			capsfilter.SetObject("caps", gst.CapsFromString("application/x-rtp, payload=96, encoding-name=OPUS"))
 
-			queue, _ := gst.ElementFactoryMake("queue", "queue"+fmt.Sprintf("%d", atomic.LoadInt32(&pubCount)))
-			rtpopusdepay, _ := gst.ElementFactoryMake("rtpopusdepay", "rtpopusdepay"+fmt.Sprintf("%d", atomic.LoadInt32(&pubCount)))
-			decodebin, _ := gst.ElementFactoryMake("decodebin", "decodebin"+fmt.Sprintf("%d", atomic.LoadInt32(&pubCount)))
-			audioconvert, _ := gst.ElementFactoryMake("audioconvert", "audioconvert"+fmt.Sprintf("%d", atomic.LoadInt32(&pubCount)))
-			//usersink, _ := gst.ElementFactoryMake("appsink", "appsink"+fmt.Sprintf("%d", atomic.LoadInt32(&pubCount)))
-			//usersink.SetObject("name", "user"+fmt.Sprintf("%d", atomic.LoadInt32(&pubCount)))
+			queue, _ := gst.ElementFactoryMake("queue", "queue"+userID)
+			rtpopusdepay, _ := gst.ElementFactoryMake("rtpopusdepay", "rtpopusdepay"+userID)
+			decodebin, _ := gst.ElementFactoryMake("decodebin", "decodebin"+userID)
+			audioconvert, _ := gst.ElementFactoryMake("audioconvert", "audioconvert"+userID)
+			//usersink, _ := gst.ElementFactoryMake("appsink", "appsink"+userID)
+			//usersink.SetObject("name", "user"+userID)
 
 			// audioTestSrc, _ := gst.ElementFactoryMake("audiotestsrc","testsrcaudio")
 			// testConvert, _ := gst.ElementFactoryMake("audioconvert", "testconvert")
 
-			//userPipelineAudioConvert, _ := gst.ElementFactoryMake("audioconvert", "userconvert"+fmt.Sprintf("%d", atomic.LoadInt32(&pubCount)))
-			//userPipelineopus, _ := gst.ElementFactoryMake("opusenc", "useropus"+fmt.Sprintf("%d", atomic.LoadInt32(&pubCount)))
-			//userSink, _ := gst.ElementFactoryMake("appsink", "usersink"+fmt.Sprintf("%d", atomic.LoadInt32(&pubCount)))
+			//userPipelineAudioConvert, _ := gst.ElementFactoryMake("audioconvert", "userconvert"+userID)
+			//userPipelineopus, _ := gst.ElementFactoryMake("opusenc", "useropus"+userID)
+			//userSink, _ := gst.ElementFactoryMake("appsink", "usersink"+userID)
 
 			//audioTrack.AddMany(userPipelineAudioConvert, userPipelineopus, userSink)
 
-			userP, _ = gst.PipelineNew("user" + fmt.Sprintf("%d", atomic.LoadInt32(&pubCount)))
-			userAppSrc, _ := gst.ElementFactoryMake("appsrc", "userAppSrc")
-			userAudioConver, _ := gst.ElementFactoryMake("audioconvert", "userAudioConver")
-			userOpus, _ := gst.ElementFactoryMake("opusenc", "userOpus")
-			userShim, _ := gst.ElementFactoryMake("appsink", "userShim")
-			userShim.SetObject("name", "usersink")
+			// userP, _ = gst.PipelineNew("user" + userID)
+			// userAppSrc, _ := gst.ElementFactoryMake("appsrc", "userAppSrc")
+			// userAudioConver, _ := gst.ElementFactoryMake("audioconvert", "userAudioConver")
+			// userOpus, _ := gst.ElementFactoryMake("opusenc", "userOpus")
+			// userShim, _ := gst.ElementFactoryMake("appsink", "userShim")
+			// userShim.SetObject("name", "usersink")
 
-			userAppSrc.SetObject("name", "src"+fmt.Sprintf("%d", atomic.LoadInt32(&pubCount)))
-			userAppSrc.SetObject("format", gst.NewFormat("time"))
-			userAppSrc.SetObject("is-live", true)
-			userAppSrc.SetObject("do-timestamp", true)
+			// userAppSrc.SetObject("name", "src"+userID)
+			// userAppSrc.SetObject("format", gst.NewFormat("time"))
+			// userAppSrc.SetObject("is-live", true)
+			// userAppSrc.SetObject("do-timestamp", true)
 
-			userCaps, _ := gst.ElementFactoryMake("capsfilter", "usercaps"+userID)
-			userCaps.SetObject("caps", gst.CapsFromString("application/x-rtp, payload=96, encoding-name=OPUS"))
+			// userCaps, _ := gst.ElementFactoryMake("capsfilter", "usercaps"+userID)
+			// userCaps.SetObject("caps", gst.CapsFromString("application/x-rtp, payload=96, encoding-name=OPUS"))
 
-			userQueue, _ := gst.ElementFactoryMake("queue", "userqueue"+userID)
-			useropusdepay, _ := gst.ElementFactoryMake("rtpopusdepay", "userrtpopusdepay"+userID)
+			// userQueue, _ := gst.ElementFactoryMake("queue", "userqueue"+userID)
+			// useropusdepay, _ := gst.ElementFactoryMake("rtpopusdepay", "userrtpopusdepay"+userID)
 
-			userDecodeBin, _ := gst.ElementFactoryMake("decodebin", "userDecodeBin"+userID)
+			// userDecodeBin, _ := gst.ElementFactoryMake("decodebin", "userDecodeBin"+userID)
 
-			//userShim.SetObject("socket-path", "/tmp/user"+fmt.Sprintf("%d", atomic.LoadInt32(&pubCount)))
-			//userShim.SetObject("shm-size", "2000000")
+			// //userShim.SetObject("socket-path", "/tmp/user"+userID)
+			// //userShim.SetObject("shm-size", "2000000")
 
-			userP.AddMany(userAppSrc, userAudioConver, useropusdepay, userOpus, userShim, userCaps, userQueue, userDecodeBin)
+			// userP.AddMany(userAppSrc, userAudioConver, useropusdepay, userOpus, userShim, userCaps, userQueue, userDecodeBin)
 
-			log.Println(userAppSrc.Link(userCaps))
-			log.Println(userCaps.Link(userQueue))
-			log.Println(userQueue.Link(useropusdepay))
+			// log.Println(userAppSrc.Link(userCaps))
+			// log.Println(userCaps.Link(userQueue))
+			// log.Println(userQueue.Link(useropusdepay))
 
-			log.Println(useropusdepay.Link(userDecodeBin))
+			// log.Println(useropusdepay.Link(userDecodeBin))
 
-			log.Println(userAudioConver.Link(userOpus))
-			log.Println(userOpus.Link(userShim))
+			// log.Println(userAudioConver.Link(userOpus))
+			// log.Println(userOpus.Link(userShim))
 
-			userDecodeBin.SetPadAddedCallback(func(element *gst.Element, pad *gst.Pad) {
-				log.Println(pad.Link(userAudioConver.GetStaticPad("sink")))
-			})
-			userP.SetState(gst.StatePlaying)
-			userPipelines[userID] = userShim
+			// userDecodeBin.SetPadAddedCallback(func(element *gst.Element, pad *gst.Pad) {
+			// 	log.Println(pad.Link(userAudioConver.GetStaticPad("sink")))
+			// })
+			// userP.SetState(gst.StatePlaying)
+			// userPipelines[userID] = userShim
 			audioTrack.AddMany(appsrc, capsfilter, queue, rtpopusdepay, decodebin, audioconvert)
 
 			log.Println("COUNTING FROM HERE")
@@ -264,7 +263,7 @@ func room(w http.ResponseWriter, r *http.Request) {
 			//log.Println(userPipelineAudioConvert.Link(userPipelineopus))
 			//log.Println(userPipelineopus.Link(userSink))
 
-			//userPipelines[fmt.Sprintf("%d", atomic.LoadInt32(&pubCount))] = userSink
+			//userPipelines[userID] = userSink
 
 			//decodebin.SetPadAddedCallback(func(element *gst.Element, pad *gst.Pad) {
 			//	log.Println("decodebin Linking", pad.Link(tee.GetStaticPad("sink")))
@@ -292,15 +291,7 @@ func room(w http.ResponseWriter, r *http.Request) {
 			for {
 				i, err := remoteTrack.Read(rtpBuf)
 
-				//err = appsrc.PushBuffer(rtpBuf[:i])
-				for k, v := range userPipelines {
-					if k == userID { //my stream should not have my voice
-						continue
-					}
-					audioTrackLock.Lock()
-					v.PushBuffer(rtpBuf[:i])
-					audioTrackLock.Unlock()
-				}
+				err = appsrc.PushBuffer(rtpBuf[:i])
 
 				if err != io.ErrClosedPipe {
 					checkError(err)
@@ -355,21 +346,11 @@ func room(w http.ResponseWriter, r *http.Request) {
 
 	//npl, _ := gst.ParseLaunch("audiotestsrc ! audioconvert ! appsink name=sink")
 
-	//audioSink := npl.GetByName("sink")
+	audioSink := audioTrack.GetByName("sink")
 
 	for {
-		if userPipelines[userID] == nil {
-			continue
-		}
-
-		if len(userPipelines) < 2 {
-			continue
-		}
-		sink := userP.GetByName("usersink")
-		audioTrackLock.Lock()
-		sample, err := sink.PullSample()
-		audioTrackLock.Unlock()
-
+		sample, err := audioSink.PullSample()
+		fmt.Println(sample)
 		//checkError(err)
 		if err != nil {
 			fmt.Println("NOT NUll")
