@@ -1,1 +1,6 @@
 file.ogg
+*.swp
+**/*.swp
+**/*.swo
+*.swo
+**/*.vscode
